@@ -1,0 +1,31 @@
+name: app
+
+type: golang:1.10
+
+hooks:
+  build: |
+    set -e
+    export VERSION="3.24.1"
+    wget https://github.com/Kitware/CMake/releases/download/v$VERSION/cmake-$VERSION-linux-x86_64.tar.gz
+    tar xzf cmake-$VERSION-linux-x86_64.tar.gz
+    export PATH=$PATH:/$PWD/cmake-$VERSION-linux-x86_64/bin
+    curl https://sh.rustup.rs > rustup.sh
+    sh rustup.sh -y --default-toolchain nightly
+    rm rustup.sh
+    . "$HOME/.cargo/env"
+    cargo build --release
+    rm -rf apibara
+    rm -rf cli
+    mv target/release/apibara-cli .
+    rm -rf target
+
+web:
+  upstream:
+    socket_family: tcp
+    protocol: http
+
+  commands:
+    start: |
+      env "APIBARA_SERVER.ADDRESS=0.0.0.0:$PORT" "APIBARA_ADMIN.STORAGE.CONNECTION_STRING=$MONGODB_URL" "APIBARA_NETWORK.STARKNET.PROVIDER_URL=$PROVIDER_URL" ./apibara-cli start -c configuration.toml
+
+disk: 1024
