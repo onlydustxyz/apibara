@@ -41,6 +41,7 @@ impl<IP: IndexerPersistence> Server<IP> {
         info!(addr=?addr, "starting apibara server");
 
         TonicServer::builder()
+            .accept_http1(true)
             .add_service(indexer_manager.into_service())
             .serve(addr)
             .await?;
