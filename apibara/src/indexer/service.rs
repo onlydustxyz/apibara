@@ -152,8 +152,10 @@ where
                     match msg {
                         HeadMessage::NewBlock(block) => {
                             info!("⛏️ {} {}", block.number, block.hash);
-                            self.update_with_new_block(block.clone())?;
-                            self.stream_tx.send(Ok(Message::NewBlock(block))).await?;
+                            let updated = self.update_with_new_block(block.clone())?;
+                            if updated {
+                                self.stream_tx.send(Ok(Message::NewBlock(block))).await?;
+                            }
                             continue
                         }
                         HeadMessage::Reorg(block) => {
@@ -283,16 +285,16 @@ where
         }
     }
 
-    pub fn update_with_new_block(&mut self, new_block: BlockHeader) -> Result<()> {
+    pub fn update_with_new_block(&mut self, new_block: BlockHeader) -> Result<bool, Error> {
         if new_block.number < self.next_block_number {
-            return Err(Error::msg("new block is not valid"));
+            return Ok(false);
         }
         if self.block_cache.contains_key(&new_block.number) {
             return Err(Error::msg("duplicate block"));
         }
         self.block_cache.insert(new_block.number, new_block.clone());
         self.head = Some(new_block);
-        Ok(())
+        Ok(true)
     }
 
     pub fn update_with_reorg_block(&mut self, new_block: BlockHeader) -> Result<()> {
